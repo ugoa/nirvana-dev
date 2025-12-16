@@ -19,7 +19,7 @@ use crate::HttpBody;
 use crate::{BoxError, Request, Response, TowerService};
 
 pub trait Listener: 'static {
-    type Io: AsyncRead + AsyncWrite + Unpin + 'static;
+    type Io: AsyncRead + AsyncWrite + Unpin;
 
     type Addr;
 
