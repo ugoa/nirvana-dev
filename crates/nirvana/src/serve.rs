@@ -137,14 +137,17 @@ where
 
             unsafe {
                 monoio::spawn_without_static(async {
-                    if let Err(err) = http1::Builder::new()
+                    let result = http1::Builder::new()
                         .timer(monoio_compat::hyper::MonoioTimer)
                         .serve_connection(io, hyper_service)
-                        .await
-                    {
-                        println!("Error serving connection: {:?}", err);
+                        .await;
+
+                    match result {
+                        Ok(_) => {}
+                        Err(err) => println!("Error serving connection: {:?}", err),
                     }
-                });
+                })
+                .await; // Important! this guarratees the parent outlives the children.
             }
         }
     }
