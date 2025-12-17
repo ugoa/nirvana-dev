@@ -1,13 +1,13 @@
-pub mod routing;
+#![allow(clippy::all)]
+#![allow(warnings)]
 
 pub mod extract;
-
 pub mod handler;
+pub mod routing;
 
 mod prelude {
     pub use crate::{
-        Body, BoxError, HttpBody, HttpRequest, IntoResponse, Request,
-        Response, Route, TowerService,
+        Body, BoxError, HttpBody, HttpRequest, IntoResponse, Request, Response, Route, TowerService,
     };
 }
 
