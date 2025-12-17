@@ -15,6 +15,14 @@ use crate::{
     response::IntoResponse,
 };
 
+pub trait NewHandler<X, S>: Clone + Sized + 'static {
+    async fn call(self, req: Request, state: S) -> Response;
+
+    fn with_state(self, state: S) -> HandlerService<Self, X, S> {
+        HandlerService::new(self, state)
+    }
+}
+
 // X for Extractor
 pub trait Handler<X, S>: Clone + Sized + 'static {
     type Future: Future<Output = Response> + 'static;
@@ -144,9 +152,9 @@ macro_rules! impl_handler {
 #[rustfmt::skip]
 macro_rules! all_the_tuples {
     ($name:ident) => {
-        $name!([], T1);
-        $name!([T1], T2);
-        $name!([T1, T2], T3);
+        // $name!([], T1);
+        // $name!([T1], T2);
+        // $name!([T1, T2], T3);
         $name!([T1, T2, T3], T4);
         $name!([T1, T2, T3, T4], T5);
         $name!([T1, T2, T3, T4, T5], T6);
@@ -161,6 +169,88 @@ macro_rules! all_the_tuples {
         $name!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14], T15);
         $name!([T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15], T16);
     };
+}
+
+#[allow(non_snake_case, unused_mut)]
+impl<F, Fut, S, Res, M, T1> Handler<(M, T1), S> for F
+where
+    F: FnOnce(T1) -> Fut + Clone + 'static,
+    Fut: Future<Output = Res>,
+    S: 'static,
+    Res: IntoResponse,
+    T1: FromRequest<S, M>,
+{
+    type Future = Pin<Box<dyn Future<Output = Response>>>;
+    fn call(self, req: Request, state: S) -> Self::Future {
+        let (mut parts, body) = req.into_parts();
+        Box::pin(async move {
+            let req = Request::from_parts(parts, body);
+            let T1 = match T1::from_request(req, &state).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+            self(T1).await.into_response()
+        })
+    }
+}
+#[allow(non_snake_case, unused_mut)]
+impl<F, Fut, S, Res, M, T1, T2> Handler<(M, T1, T2), S> for F
+where
+    F: FnOnce(T1, T2) -> Fut + Clone + 'static,
+    Fut: Future<Output = Res>,
+    S: 'static,
+    Res: IntoResponse,
+    T1: FromRequestParts<S>,
+    T2: FromRequest<S, M>,
+{
+    type Future = Pin<Box<dyn Future<Output = Response>>>;
+    fn call(self, req: Request, state: S) -> Self::Future {
+        let (mut parts, body) = req.into_parts();
+        Box::pin(async move {
+            let T1 = match T1::from_request_parts(&mut parts, &state).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+            let req = Request::from_parts(parts, body);
+            let T2 = match T2::from_request(req, &state).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+            self(T1, T2).await.into_response()
+        })
+    }
+}
+#[allow(non_snake_case, unused_mut)]
+impl<F, Fut, S, Res, M, T1, T2, T3> Handler<(M, T1, T2, T3), S> for F
+where
+    F: FnOnce(T1, T2, T3) -> Fut + Clone + 'static,
+    Fut: Future<Output = Res>,
+    S: 'static,
+    Res: IntoResponse,
+    T1: FromRequestParts<S>,
+    T2: FromRequestParts<S>,
+    T3: FromRequest<S, M>,
+{
+    type Future = Pin<Box<dyn Future<Output = Response>>>;
+    fn call(self, req: Request, state: S) -> Self::Future {
+        let (mut parts, body) = req.into_parts();
+        Box::pin(async move {
+            let T1 = match T1::from_request_parts(&mut parts, &state).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+            let T2 = match T2::from_request_parts(&mut parts, &state).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+            let req = Request::from_parts(parts, body);
+            let T3 = match T3::from_request(req, &state).await {
+                Ok(value) => value,
+                Err(rejection) => return rejection.into_response(),
+            };
+            self(T1, T2, T3).await.into_response()
+        })
+    }
 }
 
 all_the_tuples!(impl_handler);
