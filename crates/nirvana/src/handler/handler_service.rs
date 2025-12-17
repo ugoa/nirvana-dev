@@ -1,7 +1,5 @@
-use std::{
-    fmt,
-    marker::PhantomData,
-};
+use std::{fmt, marker::PhantomData};
+
 pub struct HandlerService<H, X, S> {
     pub handler: H,
     pub state: S,
