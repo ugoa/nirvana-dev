@@ -1,3 +1,11 @@
+use crate::{
+    Body, BoxError, Bytes, HttpBody, HttpRequest, Request, Response, TowerService,
+    extract::{FromRequest, FromRequestParts},
+    handler::handler_service::HandlerService,
+    opaque_future,
+    response::IntoResponse,
+};
+use futures::future::Map;
 use std::{
     convert::Infallible,
     fmt,
@@ -6,14 +14,8 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures::future::Map;
-
-use crate::{
-    Body, BoxError, Bytes, HttpBody, HttpRequest, Request, Response, TowerService,
-    extract::{FromRequest, FromRequestParts},
-    opaque_future,
-    response::IntoResponse,
-};
+pub mod handler_service;
+pub mod handler_service_tower;
 
 // X for Extractor
 pub trait Handler<X, S>: Clone + Sized + 'static {
@@ -23,54 +25,6 @@ pub trait Handler<X, S>: Clone + Sized + 'static {
 
     fn with_state(self, state: S) -> HandlerService<Self, X, S> {
         HandlerService::new(self, state)
-    }
-}
-
-pub struct HandlerService<H, X, S> {
-    pub handler: H,
-    pub state: S,
-    _marker: PhantomData<fn() -> X>,
-}
-
-impl<H, X, S> Clone for HandlerService<H, X, S>
-where
-    H: Clone,
-    S: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            handler: self.handler.clone(),
-            state: self.state.clone(),
-            _marker: PhantomData,
-        }
-    }
-}
-
-opaque_future! {
-    /// The response future for [`IntoService`](super::IntoService).
-    pub type IntoServiceFuture<F> =
-        Map<
-            F,
-            fn(Response) -> Result<Response, Infallible>,
-        >;
-}
-
-impl<H, X, S> HandlerService<H, X, S> {
-    pub(super) fn new(handler: H, state: S) -> Self {
-        Self {
-            handler,
-            state,
-            _marker: PhantomData,
-        }
-    }
-    pub fn state(&self) -> &S {
-        &self.state
-    }
-}
-
-impl<H, T, S> fmt::Debug for HandlerService<H, T, S> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("IntoService").finish_non_exhaustive()
     }
 }
 

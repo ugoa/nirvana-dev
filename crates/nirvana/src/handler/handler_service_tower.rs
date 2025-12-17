@@ -11,7 +11,7 @@ use futures::future::Map;
 use crate::{
     Body, BoxError, Bytes, HttpBody, HttpRequest, Request, Response, TowerService,
     extract::{FromRequest, FromRequestParts},
-    handler::{Handler, HandlerService, IntoServiceFuture},
+    handler::{Handler, HandlerService},
     opaque_future,
     response::IntoResponse,
 };
@@ -43,5 +43,27 @@ where
         let future = future.map(Ok as _);
 
         IntoServiceFuture::new(future)
+    }
+}
+
+opaque_future! {
+    /// The response future for [`IntoService`](super::IntoService).
+    pub type IntoServiceFuture<F> =
+        Map<
+            F,
+            fn(Response) -> Result<Response, Infallible>,
+        >;
+}
+
+impl<H, X, S> HandlerService<H, X, S> {
+    pub(super) fn new(handler: H, state: S) -> Self {
+        Self {
+            handler,
+            state,
+            _marker: PhantomData,
+        }
+    }
+    pub fn state(&self) -> &S {
+        &self.state
     }
 }

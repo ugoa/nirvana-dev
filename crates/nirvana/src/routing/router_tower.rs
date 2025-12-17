@@ -1,12 +1,11 @@
-use std::{
-    convert::Infallible,
-    task::{Context, Poll},
-};
-
 use crate::{
     Body, BoxError, HttpBody, Request, Response, Router, TowerService,
     routing::route_tower::RouteFuture,
     serve::{IncomingStream, Listener},
+};
+use std::{
+    convert::Infallible,
+    task::{Context, Poll},
 };
 
 impl<L> TowerService<IncomingStream<'_, L>> for Router<()>

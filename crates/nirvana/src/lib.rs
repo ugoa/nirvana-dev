@@ -7,8 +7,6 @@ pub mod extract;
 
 pub mod handler;
 
-pub mod tower_service;
-
 mod prelude {
     pub use crate::{
         Body, BoxError, Bytes, HttpBody, HttpRequest, HttpResponse, IntoResponse, Request,
