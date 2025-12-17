@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     Body, BoxError, HttpBody, Request, Response, Router, TowerService,
-    routing::RouteFuture,
+    routing::route::RouteFuture,
     serve::{IncomingStream, Listener},
 };
 

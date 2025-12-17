@@ -1,8 +1,11 @@
+pub mod tower_impl;
+
 use http::Method;
 use pin_project_lite::pin_project;
+
 use tower::util::Oneshot;
 
-use crate::{prelude::*, tower_service::route::make_into_response::MapIntoResponse};
+use crate::prelude::*;
 
 use std::{
     convert::Infallible,
@@ -10,9 +13,9 @@ use std::{
     task::{Context, Poll, ready},
 };
 
-use tower::{Layer, ServiceExt};
+use tower::ServiceExt;
 
-use crate::tower_service::route::box_clone_service::LocalBoxCloneService;
+use self::tower_impl::{LocalBoxCloneService, MapIntoResponse};
 
 pub struct Route<E = Infallible>(LocalBoxCloneService<Request, Response, E>);
 
@@ -40,7 +43,7 @@ impl<E> Route<E> {
         todo!()
     }
 
-    fn oneshot_inner_owned(self, req: Request) -> RouteFuture<E> {
+    pub fn oneshot_inner_owned(self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
         RouteFuture::new(method, self.0.oneshot(req))
     }

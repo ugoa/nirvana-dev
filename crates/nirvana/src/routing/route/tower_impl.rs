@@ -1,13 +1,35 @@
+use super::{Route, RouteFuture};
 use crate::{
-    Body, BoxError, HttpBody, Request, Response, Router, TowerService,
+    Body, BoxError, HttpBody, HttpRequest, IntoResponse, Request, Response, Router, TowerService,
     serve::{IncomingStream, Listener},
 };
+use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
     pin::Pin,
-    task::{Context, Poll},
+    task::{Context, Poll, ready},
 };
 use tower::util::ServiceExt;
+
+impl<B, E> TowerService<Request<B>> for Route<E>
+where
+    B: HttpBody<Data = bytes::Bytes> + 'static,
+    B::Error: Into<BoxError>,
+{
+    type Response = Response;
+
+    type Error = E;
+
+    type Future = RouteFuture<E>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<B>) -> Self::Future {
+        self.oneshot_inner(req.map(Body::new))
+    }
+}
 
 /// A local boxed [`Service`] trait object with `Clone`. Same with UnsyncBoxService
 /// Ref: https://github.com/tower-rs/tower/blob/tower-0.5.2/tower/src/util/boxed/unsync.rs#L12
@@ -78,5 +100,58 @@ where
     ) -> Box<dyn ClonableService<S, Response = T::Response, Error = T::Error, Future = T::Future>>
     {
         Box::new(self.clone())
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MapIntoResponse<S> {
+    pub inner: S,
+}
+
+impl<S> MapIntoResponse<S> {
+    pub(crate) fn new(inner: S) -> Self {
+        Self { inner }
+    }
+}
+
+impl<B, S> TowerService<HttpRequest<B>> for MapIntoResponse<S>
+where
+    S: TowerService<HttpRequest<B>>,
+    S::Response: IntoResponse,
+{
+    type Response = Response;
+    type Error = S::Error;
+    type Future = MapIntoResponseFuture<S::Future>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: HttpRequest<B>) -> Self::Future {
+        MapIntoResponseFuture {
+            inner: self.inner.call(req),
+        }
+    }
+}
+
+pin_project! {
+    pub(crate) struct MapIntoResponseFuture<F> {
+        #[pin]
+        pub inner: F,
+    }
+}
+
+impl<F, T, E> Future for MapIntoResponseFuture<F>
+where
+    F: Future<Output = Result<T, E>>,
+    T: IntoResponse,
+{
+    type Output = Result<Response, E>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let res = ready!(self.project().inner.poll(cx)?);
+
+        Poll::Ready(Ok(res.into_response()))
+        // Here every different types of return values from handler turn into Response
     }
 }
