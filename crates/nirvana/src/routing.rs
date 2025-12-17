@@ -1,8 +1,11 @@
-pub mod route;
-
+use self::route::tower_impl::RouteFuture;
+use crate::opaque_future;
+use crate::prelude::*;
+use crate::{HttpRequest, extract::FromRequest, handler::Handler, routing::route::Route};
 use futures_util::future::Map;
-
+use http::Method;
 use matchit::MatchError;
+use pin_project_lite::pin_project;
 use std::{
     collections::HashMap,
     convert::Infallible,
@@ -12,15 +15,9 @@ use std::{
     task::{Context, Poll, ready},
 };
 use tower::ServiceExt;
-
-use crate::{Body, extract::FromRequest, routing::route::Route};
-use crate::{HttpRequest, handler::Handler};
-use crate::{opaque_future, routing::route::tower_impl::RouteFuture};
-use http::Method;
-use pin_project_lite::pin_project;
 use tower::util::Oneshot;
 
-use crate::{BoxError, HttpBody, Request, Response, TowerService, response::IntoResponse};
+pub mod route;
 
 #[derive(Clone)]
 pub struct Router<S = ()> {
