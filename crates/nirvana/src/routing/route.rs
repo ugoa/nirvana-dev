@@ -38,9 +38,7 @@ impl<E> Route<E> {
 
     pub fn oneshot_inner(&self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
-        self.0.clone().oneshot(req);
-
-        todo!()
+        RouteFuture::new(method, self.0.clone().oneshot(req))
     }
 
     pub fn oneshot_inner_owned(self, req: Request) -> RouteFuture<E> {
