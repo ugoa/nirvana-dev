@@ -4,6 +4,7 @@ use crate::routing::route::Route;
 use crate::routing::route_tower::RouteFuture;
 use http::Method;
 use std::convert::Infallible;
+
 pub struct MethodRouter<S = (), E = Infallible> {
     get: MethodEndpoint<S, E>,
     head: MethodEndpoint<S, E>,

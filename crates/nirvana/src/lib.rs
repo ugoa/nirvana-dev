@@ -12,7 +12,7 @@ mod prelude {
 }
 
 pub use self::{
-    extract::state::State, response::IntoResponse, routing::method_routing::get,
+    extract::state::State, response::IntoResponse, routing::method_router::get,
     routing::route::Route, routing::router::SimpleRouter, serve::serve,
 };
 

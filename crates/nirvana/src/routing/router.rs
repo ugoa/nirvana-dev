@@ -1,7 +1,7 @@
 use crate::prelude::*;
-use crate::routing::method_routing::MethodRouter;
+use crate::routing::method_router::MethodRouter;
 use crate::routing::route_tower::RouteFuture;
-use crate::{handler::Handler, routing::method_routing::BoxedHandler};
+use crate::{handler::Handler, routing::method_router::BoxedHandler};
 use matchit::MatchError;
 use std::rc::Rc;
 use std::{collections::HashMap, convert::Infallible};
