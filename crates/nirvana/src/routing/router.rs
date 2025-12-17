@@ -1,19 +1,15 @@
+use crate::handler::Handler;
 use crate::prelude::*;
 use crate::routing::method_routing::MethodRouter;
 use crate::routing::route_tower::RouteFuture;
-use crate::handler::Handler;
 use matchit::MatchError;
-use std::{
-    collections::HashMap,
-    convert::Infallible,
-};
+use std::{collections::HashMap, convert::Infallible};
 
 #[derive(Clone)]
-pub struct Router<S = ()> {
+pub struct SimpleRouter<S = ()> {
     routes: Vec<MethodRouter<S>>,
     node: Node,
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RouteId(usize);
@@ -49,7 +45,7 @@ impl Node {
     }
 }
 
-impl<S> Router<S>
+impl<S> SimpleRouter<S>
 where
     S: Clone + 'static,
 {
@@ -75,13 +71,13 @@ where
         self
     }
 
-    pub fn with_state<S2>(&self, state: S) -> Router<S2> {
+    pub fn with_state<S2>(&self, state: S) -> SimpleRouter<S2> {
         let method_routers = (0..self.routes.len())
             .map(|i| self.routes[i].clone().with_state(state.clone()))
             .collect();
 
         let node = self.node.clone();
-        Router {
+        SimpleRouter {
             routes: method_routers,
             node: node,
         }

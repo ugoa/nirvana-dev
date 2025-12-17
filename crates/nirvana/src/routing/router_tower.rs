@@ -1,5 +1,5 @@
 use crate::{
-    Body, BoxError, HttpBody, Request, Response, Router, TowerService,
+    Body, BoxError, HttpBody, Request, Response, SimpleRouter, TowerService,
     routing::route_tower::RouteFuture,
     serve::{IncomingStream, Listener},
 };
@@ -8,7 +8,7 @@ use std::{
     task::{Context, Poll},
 };
 
-impl<L> TowerService<IncomingStream<'_, L>> for Router<()>
+impl<L> TowerService<IncomingStream<'_, L>> for SimpleRouter<()>
 where
     L: Listener,
 {
@@ -27,7 +27,7 @@ where
     }
 }
 
-impl<B> TowerService<Request<B>> for Router<()>
+impl<B> TowerService<Request<B>> for SimpleRouter<()>
 where
     B: HttpBody<Data = bytes::Bytes> + 'static,
     B::Error: Into<BoxError>,

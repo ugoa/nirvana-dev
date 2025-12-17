@@ -10,7 +10,7 @@ use hyper::{Method, Request, Response, StatusCode};
 use hyper::{server::conn::http1, service::service_fn};
 use monoio::{io::IntoPollIo, net::TcpListener};
 
-use nirvana::{Router, State, extract::query::Query, get};
+use nirvana::{SimpleRouter, State, extract::query::Query, get};
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -69,7 +69,7 @@ async fn main() {
 
     let addr: SocketAddr = ([0, 0, 0, 0], 9527).into();
     let listener = TcpListener::bind(addr).unwrap();
-    let app = Router::new()
+    let app = SimpleRouter::new()
         .route("/", get(root))
         .route("/sub", get(sub))
         .with_state(AppState {
