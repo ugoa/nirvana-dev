@@ -1,15 +1,16 @@
-use super::{Route, RouteFuture};
+use super::Route;
 use crate::{
     Body, BoxError, HttpBody, HttpRequest, IntoResponse, Request, Response, Router, TowerService,
     serve::{IncomingStream, Listener},
 };
+use http::Method;
 use pin_project_lite::pin_project;
 use std::{
     convert::Infallible,
     pin::Pin,
     task::{Context, Poll, ready},
 };
-use tower::util::ServiceExt;
+use tower::util::{Oneshot, ServiceExt};
 
 impl<B, E> TowerService<Request<B>> for Route<E>
 where
@@ -131,6 +132,36 @@ where
         MapIntoResponseFuture {
             inner: self.inner.call(req),
         }
+    }
+}
+
+pin_project! {
+    /// Response future for [`Route`].
+    pub struct RouteFuture<E> {
+        #[pin]
+        inner: Oneshot<LocalBoxCloneService<Request,Response,E> , Request>,
+        method: Method,
+    }
+}
+
+impl<E> RouteFuture<E> {
+    pub fn new(
+        method: Method,
+        inner: Oneshot<LocalBoxCloneService<Request, Response, E>, Request>,
+    ) -> Self {
+        Self { inner, method }
+    }
+}
+
+impl<E> Future for RouteFuture<E> {
+    type Output = Result<Response, E>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+
+        let mut resp = std::task::ready!(this.inner.poll(cx))?;
+
+        Poll::Ready(Ok(resp))
     }
 }
 

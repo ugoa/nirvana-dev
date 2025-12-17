@@ -13,13 +13,9 @@ use std::{
 };
 use tower::ServiceExt;
 
-use crate::opaque_future;
-use crate::{
-    Body,
-    extract::FromRequest,
-    routing::route::{Route, RouteFuture},
-};
+use crate::{Body, extract::FromRequest, routing::route::Route};
 use crate::{HttpRequest, handler::Handler};
+use crate::{opaque_future, routing::route::tower_impl::RouteFuture};
 use http::Method;
 use pin_project_lite::pin_project;
 use tower::util::Oneshot;
