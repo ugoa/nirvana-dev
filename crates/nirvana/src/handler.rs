@@ -15,14 +15,6 @@ use crate::{
     response::IntoResponse,
 };
 
-pub trait NewHandler<X, S>: Clone + Sized + 'static {
-    async fn call(self, req: Request, state: S) -> Response;
-
-    fn with_state(self, state: S) -> HandlerService<Self, X, S> {
-        HandlerService::new(self, state)
-    }
-}
-
 // X for Extractor
 pub trait Handler<X, S>: Clone + Sized + 'static {
     type Future: Future<Output = Response> + 'static;
