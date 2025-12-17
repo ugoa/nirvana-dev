@@ -12,12 +12,13 @@ pub mod tower_service;
 mod prelude {
     pub use crate::{
         Body, BoxError, Bytes, HttpBody, HttpRequest, HttpResponse, IntoResponse, Request,
-        Response, Router, TowerService, routing::get, serve::serve,
+        Response, Route, Router, TowerService, get, serve,
     };
 }
 
 pub use self::{
-    extract::state::State, response::IntoResponse, routing::Router, routing::get, serve::serve,
+    extract::state::State, response::IntoResponse, routing::method_routing::get,
+    routing::route::Route, routing::router::Router, serve::serve,
 };
 
 #[macro_use]

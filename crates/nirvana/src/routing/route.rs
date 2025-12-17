@@ -1,4 +1,4 @@
-use self::tower_impl::{LocalBoxCloneService, MapIntoResponse, RouteFuture};
+use super::route_tower_impl::{LocalBoxCloneService, MapIntoResponse, RouteFuture};
 use crate::prelude::*;
 use http::Method;
 use pin_project_lite::pin_project;
@@ -9,8 +9,6 @@ use std::{
 };
 use tower::ServiceExt;
 use tower::util::Oneshot;
-
-pub mod tower_impl;
 
 pub struct Route<E = Infallible>(LocalBoxCloneService<Request, Response, E>);
 
