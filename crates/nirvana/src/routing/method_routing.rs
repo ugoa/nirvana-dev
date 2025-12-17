@@ -88,7 +88,7 @@ where
         X: 'static,
         S: 'static,
     {
-        let endpoint = &MethodEndpoint::BoxedHandler(BoxedIntoRoute::from_handler(handler));
+        let endpoint = &MethodEndpoint::BoxedHandler(BoxedHandlerIntoRoute::from_handler(handler));
         let end = &mut self.get;
 
         if end.is_some() {
@@ -169,7 +169,7 @@ where
 enum MethodEndpoint<S, E> {
     None,
     Route(Route<E>),
-    BoxedHandler(BoxedIntoRoute<S, E>),
+    BoxedHandler(BoxedHandlerIntoRoute<S, E>),
 }
 
 impl<S, E> MethodEndpoint<S, E>
@@ -199,9 +199,9 @@ impl<S, E> Clone for MethodEndpoint<S, E> {
     }
 }
 
-pub(crate) struct BoxedIntoRoute<S, E>(Box<dyn ErasedIntoRoute<S, E>>);
+pub(crate) struct BoxedHandlerIntoRoute<S, E>(Box<dyn ErasedHandlerIntoRoute<S, E>>);
 
-impl<S> BoxedIntoRoute<S, Infallible>
+impl<S> BoxedHandlerIntoRoute<S, Infallible>
 where
     S: Clone + 'static,
 {
@@ -217,13 +217,13 @@ where
     }
 }
 
-impl<S, E> BoxedIntoRoute<S, E> {
+impl<S, E> BoxedHandlerIntoRoute<S, E> {
     pub(crate) fn into_route(self, state: S) -> Route<E> {
         self.0.into_route(state)
     }
 }
 
-impl<S, E> Clone for BoxedIntoRoute<S, E> {
+impl<S, E> Clone for BoxedHandlerIntoRoute<S, E> {
     fn clone(&self) -> Self {
         Self(self.0.clone_box())
     }
@@ -237,8 +237,8 @@ pub struct MakeErasedHandler<H, S> {
     pub into_route_fn: fn(H, S) -> Route,
 }
 
-pub(crate) trait ErasedIntoRoute<S, E> {
-    fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, E>>;
+pub(crate) trait ErasedHandlerIntoRoute<S, E> {
+    fn clone_box(&self) -> Box<dyn ErasedHandlerIntoRoute<S, E>>;
 
     fn into_route(self: Box<Self>, state: S) -> Route<E>;
 
@@ -246,12 +246,12 @@ pub(crate) trait ErasedIntoRoute<S, E> {
     fn call_with_state(self: Box<Self>, request: Request, state: S) -> RouteFuture<E>;
 }
 
-impl<H, S> ErasedIntoRoute<S, Infallible> for MakeErasedHandler<H, S>
+impl<H, S> ErasedHandlerIntoRoute<S, Infallible> for MakeErasedHandler<H, S>
 where
     H: Clone + 'static,
     S: 'static,
 {
-    fn clone_box(&self) -> Box<dyn ErasedIntoRoute<S, Infallible>> {
+    fn clone_box(&self) -> Box<dyn ErasedHandlerIntoRoute<S, Infallible>> {
         Box::new(self.clone())
     }
 

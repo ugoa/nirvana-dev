@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::routing::method_routing::MethodRouter;
 use crate::routing::route_tower::RouteFuture;
-use crate::{handler::Handler, routing::method_routing::BoxedIntoRoute};
+use crate::{handler::Handler, routing::method_routing::BoxedHandlerIntoRoute};
 use matchit::MatchError;
 use std::rc::Rc;
 use std::{collections::HashMap, convert::Infallible};
@@ -58,13 +58,12 @@ struct RouterInner<S> {
 enum Fallback<S, E = Infallible> {
     Default(Route<E>),
     Service(Route<E>),
-    BoxedHandler(BoxedIntoRoute<S, E>),
+    BoxedHandler(BoxedHandlerIntoRoute<S, E>),
 }
 
 pub(super) struct PathRouter<S> {
     routes: Vec<Endpoint<S>>,
     node: Node,
-    v7_checks: bool,
 }
 
 #[allow(clippy::large_enum_variant)]
