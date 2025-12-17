@@ -1,4 +1,4 @@
-#![allow(clippy::all)]
+// #![allow(clippy::all)]
 #![allow(warnings)]
 
 pub mod routing;
