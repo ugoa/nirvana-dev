@@ -90,6 +90,7 @@ where
         S: 'static,
         E2: 'static,
     {
+        let layer_fn = move |route: Route<E>| route.layer(layer.clone());
         todo!()
     }
 }
@@ -152,6 +153,20 @@ where
 {
     fn is_some(&self) -> bool {
         matches!(self, Self::Route(_) | Self::BoxedHandler(_))
+    }
+
+    fn map<F, E2>(self, f: F) -> MethodEndpoint<S, E2>
+    where
+        S: 'static,
+        E: 'static,
+        F: FnOnce(Route<E>) -> Route<E2> + Clone + 'static,
+        E2: 'static,
+    {
+        match self {
+            Self::None => MethodEndpoint::None,
+            Self::Route(route) => MethodEndpoint::Route(f(route)),
+            Self::BoxedHandler(handler) => MethodEndpoint::BoxedHandler(handler.map(f)),
+        }
     }
 
     fn with_state<S2>(self, state: &S) -> MethodEndpoint<S2, E> {

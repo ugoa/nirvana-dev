@@ -61,12 +61,6 @@ pub(crate) trait ErasedIntoRoute<S, E> {
     fn into_route(self: Box<Self>, state: S) -> Route<E>;
 }
 
-impl<S, E> BoxedIntoRoute<S, E> {
-    pub(crate) fn into_route(self, state: S) -> Route<E> {
-        self.0.into_route(state)
-    }
-}
-
 impl<S, E> Clone for BoxedIntoRoute<S, E> {
     fn clone(&self) -> Self {
         Self(self.0.clone_box())
@@ -107,6 +101,25 @@ where
 
     fn into_route(self: Box<Self>, state: S) -> Route<E2> {
         (self.layer)(self.inner.into_route(state))
+    }
+}
+
+impl<S, E> BoxedIntoRoute<S, E> {
+    pub(crate) fn map<F, E2>(self, f: F) -> BoxedIntoRoute<S, E2>
+    where
+        S: 'static,
+        E: 'static,
+        F: FnOnce(Route<E>) -> Route<E2> + Clone + 'static,
+        E2: 'static,
+    {
+        BoxedIntoRoute(Box::new(Map {
+            inner: self.0,
+            layer: Box::new(f),
+        }))
+    }
+
+    pub(crate) fn into_route(self, state: S) -> Route<E> {
+        self.0.into_route(state)
     }
 }
 
