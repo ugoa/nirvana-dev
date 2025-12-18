@@ -91,7 +91,18 @@ where
         E2: 'static,
     {
         let layer_fn = move |route: Route<E>| route.layer(layer.clone());
-        todo!()
+
+        MethodRouter {
+            get: self.get.map(layer_fn.clone()),
+            head: self.head.map(layer_fn.clone()),
+            delete: self.delete.map(layer_fn.clone()),
+            options: self.options.map(layer_fn.clone()),
+            patch: self.patch.map(layer_fn.clone()),
+            post: self.post.map(layer_fn.clone()),
+            put: self.put.map(layer_fn.clone()),
+            trace: self.trace.map(layer_fn.clone()),
+            connect: self.connect.map(layer_fn.clone()),
+        }
     }
 }
 

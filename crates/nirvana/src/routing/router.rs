@@ -5,6 +5,7 @@ use crate::{handler::Handler, routing::route::BoxedIntoRoute};
 use matchit::MatchError;
 use std::rc::Rc;
 use std::{collections::HashMap, convert::Infallible};
+use tower::Layer;
 
 #[derive(Clone)]
 pub struct SimpleRouter<S = ()> {
@@ -70,6 +71,25 @@ pub(super) struct PathRouter<S> {
 enum Endpoint<S> {
     MethodRouter(MethodRouter<S>),
     Route(Route),
+}
+
+impl<S> Endpoint<S>
+where
+    S: Clone + 'static,
+{
+    fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + 'static,
+        L::Service: TowerService<Request> + Clone + 'static,
+        <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
+        <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as TowerService<Request>>::Future: Send + 'static,
+    {
+        match self {
+            Self::Route(route) => Self::Route(route.layer(layer)),
+            Self::MethodRouter(method_router) => Self::MethodRouter(method_router.layer(layer)),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
