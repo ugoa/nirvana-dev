@@ -1,6 +1,6 @@
 use crate::handler::Handler;
 use crate::prelude::*;
-use crate::routing::route::Route;
+use crate::routing::route::{BoxedIntoRoute, ErasedIntoRoute, Route};
 use crate::routing::route_tower::RouteFuture;
 use http::Method;
 use std::convert::Infallible;
@@ -155,111 +155,5 @@ impl<S, E> Clone for MethodEndpoint<S, E> {
             Self::Route(inner) => Self::Route(inner.clone()),
             Self::BoxedHandler(inner) => Self::BoxedHandler(inner.clone()),
         }
-    }
-}
-
-pub(crate) struct BoxedIntoRoute<S, E>(Box<dyn ErasedHandlerIntoRoute<S, E>>);
-
-pub(crate) trait ErasedHandlerIntoRoute<S, E> {
-    fn clone_box(&self) -> Box<dyn ErasedHandlerIntoRoute<S, E>>;
-
-    fn into_route(self: Box<Self>, state: S) -> Route<E>;
-}
-
-impl<S> BoxedIntoRoute<S, Infallible>
-where
-    S: Clone + 'static,
-{
-    pub fn from_handler<H, X>(handler: H) -> Self
-    where
-        H: Handler<X, S>,
-        X: 'static,
-    {
-        Self(Box::new(ErasedHandler {
-            handler,
-            into_route_fn: |handler, state| Route::new(Handler::with_state(handler, state)),
-        }))
-    }
-}
-
-impl<S, E> BoxedIntoRoute<S, E> {
-    pub(crate) fn into_route(self, state: S) -> Route<E> {
-        self.0.into_route(state)
-    }
-}
-
-impl<S, E> Clone for BoxedIntoRoute<S, E> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone_box())
-    }
-}
-
-/// This struct stores 2 function pointers:
-/// 1. The handler function itself
-/// 2. A function that turns handler w/ state into a Route
-pub struct ErasedHandler<H, S> {
-    pub handler: H,
-    pub into_route_fn: fn(H, S) -> Route,
-}
-
-impl<H, S> ErasedHandlerIntoRoute<S, Infallible> for ErasedHandler<H, S>
-where
-    H: Clone + 'static,
-    S: 'static,
-{
-    fn clone_box(&self) -> Box<dyn ErasedHandlerIntoRoute<S, Infallible>> {
-        Box::new(self.clone())
-    }
-
-    fn into_route(self: Box<Self>, state: S) -> Route<Infallible> {
-        (self.into_route_fn)(self.handler, state)
-    }
-}
-
-impl<H, S> Clone for ErasedHandler<H, S>
-where
-    H: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            handler: self.handler.clone(),
-            into_route_fn: self.into_route_fn,
-        }
-    }
-}
-
-pub(crate) struct Map<S, E, E2> {
-    pub(crate) inner: Box<dyn ErasedHandlerIntoRoute<S, E>>,
-    pub(crate) layer: Box<dyn LayerFn<E, E2>>,
-}
-
-pub(crate) trait LayerFn<E, E2>: FnOnce(Route<E>) -> Route<E2> {
-    fn clone_box(&self) -> Box<dyn LayerFn<E, E2>>;
-}
-
-impl<F, E, E2> LayerFn<E, E2> for F
-where
-    F: FnOnce(Route<E>) -> Route<E2> + Clone + 'static,
-{
-    fn clone_box(&self) -> Box<dyn LayerFn<E, E2>> {
-        Box::new(self.clone())
-    }
-}
-
-impl<S, E, E2> ErasedHandlerIntoRoute<S, E2> for Map<S, E, E2>
-where
-    S: 'static,
-    E: 'static,
-    E2: 'static,
-{
-    fn clone_box(&self) -> Box<dyn ErasedHandlerIntoRoute<S, E2>> {
-        Box::new(Self {
-            inner: self.inner.clone_box(),
-            layer: self.layer.clone_box(),
-        })
-    }
-
-    fn into_route(self: Box<Self>, state: S) -> Route<E2> {
-        (self.layer)(self.inner.into_route(state))
     }
 }
