@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::routing::method_router::MethodRouter;
+use crate::routing::path_filter::{Node, PathRouter, RouteId};
 use crate::routing::route_tower::RouteFuture;
 use crate::{handler::Handler, routing::route::BoxedIntoRoute};
 use matchit::MatchError;
@@ -42,6 +43,17 @@ where
     pub fn new() -> Self {
         Self {
             inner: Rc::new(todo!()),
+        }
+    }
+
+    pub fn route(self, path: &str, method_router: MethodRouter<S>) -> Self {
+        let mut this = self.into_inner();
+        match (this.path_router.route(path, method_router)) {
+            Ok(x) => x,
+            Err(err) => panic!("{err}"),
+        };
+        Router {
+            inner: Rc::new(this),
         }
     }
 
@@ -104,113 +116,6 @@ enum Fallback<S, E = Infallible> {
     Default(Route<E>),
     Service(Route<E>),
     BoxedHandler(BoxedIntoRoute<S, E>),
-}
-
-pub(super) struct PathRouter<S> {
-    routes: Vec<Endpoint<S>>,
-    node: Node,
-}
-
-impl<S> PathRouter<S>
-where
-    S: Clone + 'static,
-{
-    pub(super) fn layer<L>(self, layer: L) -> Self
-    where
-        L: Layer<Route> + Clone + 'static,
-        L::Service: TowerService<Request> + Clone + 'static,
-        <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
-        <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
-        <L::Service as TowerService<Request>>::Future: 'static,
-    {
-        let routes = self
-            .routes
-            .into_iter()
-            .map(|endpoint| endpoint.layer(layer.clone()))
-            .collect();
-
-        Self {
-            routes,
-            node: self.node,
-        }
-    }
-}
-
-impl<S> Clone for PathRouter<S> {
-    fn clone(&self) -> Self {
-        Self {
-            routes: self.routes.clone(),
-            node: self.node.clone(),
-        }
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-enum Endpoint<S> {
-    MethodRouter(MethodRouter<S>),
-    Route(Route),
-}
-
-impl<S> Endpoint<S>
-where
-    S: Clone + 'static,
-{
-    fn layer<L>(self, layer: L) -> Self
-    where
-        L: Layer<Route> + Clone + 'static,
-        L::Service: TowerService<Request> + Clone + 'static,
-        <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
-        <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
-        <L::Service as TowerService<Request>>::Future: 'static,
-    {
-        match self {
-            Self::Route(route) => Self::Route(route.layer(layer)),
-            Self::MethodRouter(method_router) => Self::MethodRouter(method_router.layer(layer)),
-        }
-    }
-}
-
-impl<S> Clone for Endpoint<S> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::MethodRouter(inner) => Self::MethodRouter(inner.clone()),
-            Self::Route(inner) => Self::Route(inner.clone()),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RouteId(usize);
-
-#[derive(Clone, Default)]
-struct Node {
-    inner: matchit::Router<RouteId>,
-    route_id_to_path: HashMap<RouteId, String>,
-    path_to_route_id: HashMap<String, RouteId>,
-}
-
-impl Node {
-    fn insert(
-        &mut self,
-        path: impl Into<String>,
-        val: RouteId,
-    ) -> Result<(), matchit::InsertError> {
-        let path = path.into();
-
-        self.inner.insert(&path, val)?;
-
-        self.route_id_to_path.insert(val, path.clone());
-        self.path_to_route_id.insert(path, val);
-
-        Ok(())
-    }
-
-    fn at<'n, 'p>(
-        &'n self,
-        path: &'p str,
-    ) -> Result<matchit::Match<'n, 'p, &'n RouteId>, MatchError> {
-        self.inner.at(path)
-    }
 }
 
 impl<S> SimpleRouter<S>
