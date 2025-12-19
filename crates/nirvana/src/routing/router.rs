@@ -39,13 +39,38 @@ impl<S> Router<S>
 where
     S: Clone + 'static,
 {
-    /// Create a new `Router`.
-    ///
-    /// Unless you add additional routes, this will respond with `404 Not Found` to
-    /// all requests.
     pub fn new() -> Self {
         Self {
             inner: Rc::new(todo!()),
+        }
+    }
+
+    fn into_inner(self) -> RouterInner<S> {
+        match Rc::try_unwrap(self.inner) {
+            Ok(inner) => inner,
+            Err(arc) => RouterInner {
+                path_router: arc.path_router.clone(),
+                default_fallback: arc.default_fallback,
+            },
+        }
+    }
+
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + 'static,
+        L::Service: TowerService<Request> + Clone + 'static,
+        <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
+        <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as TowerService<Request>>::Future: 'static,
+    {
+        let this = self.into_inner();
+        Router {
+            inner: Rc::new(
+                (RouterInner {
+                    path_router: this.path_router.layer(layer.clone()),
+                    default_fallback: this.default_fallback,
+                }),
+            ),
         }
     }
 }
@@ -53,7 +78,7 @@ where
 struct RouterInner<S> {
     path_router: PathRouter<S>,
     default_fallback: bool,
-    catch_all_fallback: Fallback<S>,
+    // catch_all_fallback: Fallback<S>,
 }
 
 enum Fallback<S, E = Infallible> {
@@ -84,9 +109,19 @@ where
             .into_iter()
             .map(|endpoint| endpoint.layer(layer.clone()))
             .collect();
+
         Self {
             routes,
             node: self.node,
+        }
+    }
+}
+
+impl<S> Clone for PathRouter<S> {
+    fn clone(&self) -> Self {
+        Self {
+            routes: self.routes.clone(),
+            node: self.node.clone(),
         }
     }
 }
@@ -112,6 +147,15 @@ where
         match self {
             Self::Route(route) => Self::Route(route.layer(layer)),
             Self::MethodRouter(method_router) => Self::MethodRouter(method_router.layer(layer)),
+        }
+    }
+}
+
+impl<S> Clone for Endpoint<S> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::MethodRouter(inner) => Self::MethodRouter(inner.clone()),
+            Self::Route(inner) => Self::Route(inner.clone()),
         }
     }
 }
