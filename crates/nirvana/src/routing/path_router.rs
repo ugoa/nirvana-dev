@@ -14,6 +14,10 @@ impl<S> PathRouter<S>
 where
     S: Clone + 'static,
 {
+    pub fn route(&mut self, path: &str, method_router: MethodRouter<S>) -> Result<(), String> {
+        todo!()
+    }
+
     pub(super) fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + 'static,

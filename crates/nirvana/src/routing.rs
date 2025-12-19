@@ -2,7 +2,7 @@ pub mod router;
 
 pub mod router_tower;
 
-pub mod path_filter;
+pub mod path_router;
 
 pub mod route;
 

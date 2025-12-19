@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::routing::method_router::MethodRouter;
-use crate::routing::path_filter::{Node, PathRouter, RouteId};
+use crate::routing::path_router::{Node, PathRouter, RouteId};
 use crate::routing::route_tower::RouteFuture;
 use crate::{handler::Handler, routing::route::BoxedIntoRoute};
 use matchit::MatchError;
