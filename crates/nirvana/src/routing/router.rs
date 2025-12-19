@@ -67,6 +67,30 @@ pub(super) struct PathRouter<S> {
     node: Node,
 }
 
+impl<S> PathRouter<S>
+where
+    S: Clone + 'static,
+{
+    pub(super) fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + 'static,
+        L::Service: TowerService<Request> + Clone + 'static,
+        <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
+        <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as TowerService<Request>>::Future: 'static,
+    {
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|endpoint| endpoint.layer(layer.clone()))
+            .collect();
+        Self {
+            routes,
+            node: self.node,
+        }
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 enum Endpoint<S> {
     MethodRouter(MethodRouter<S>),
@@ -83,7 +107,7 @@ where
         L::Service: TowerService<Request> + Clone + 'static,
         <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
         <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
-        <L::Service as TowerService<Request>>::Future: Send + 'static,
+        <L::Service as TowerService<Request>>::Future: 'static,
     {
         match self {
             Self::Route(route) => Self::Route(route.layer(layer)),
