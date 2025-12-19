@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::Infallible};
+use std::{collections::HashMap, convert::Infallible, rc::Rc};
 
 use matchit::MatchError;
 use tower::Layer;
@@ -15,7 +15,29 @@ where
     S: Clone + 'static,
 {
     pub fn route(&mut self, path: &str, method_router: MethodRouter<S>) -> Result<(), String> {
-        todo!()
+        if let Some(route_id) = self.node.path_to_route_id.get(path) {
+            if let Some(Endpoint::MethodRouter(prev_method_router)) = self.routes.get(route_id.0) {
+                // merge route
+            }
+        } else {
+            let endpoint = Endpoint::MethodRouter(method_router);
+            self.new_route(path, endpoint)?;
+        }
+
+        Ok(())
+    }
+
+    fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
+        let id = RouteId(self.routes.len());
+        self.set_node(path, id)?;
+        self.routes.push(endpoint);
+        Ok(())
+    }
+
+    fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
+        self.node
+            .insert(path, id)
+            .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
     pub(super) fn layer<L>(self, layer: L) -> Self
