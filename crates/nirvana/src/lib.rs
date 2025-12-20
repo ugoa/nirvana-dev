@@ -14,7 +14,7 @@ mod prelude {
 
 pub use self::{
     extract::state::State, response::IntoResponse, routing::method_router::get,
-    routing::route::Route, serve::serve,
+    routing::route::Route, routing::router::Router, serve::serve,
 };
 
 #[macro_use]
@@ -55,6 +55,42 @@ impl From<Cow<'static, str>> for Body {
     }
 }
 
+impl From<String> for Body {
+    fn from(buf: String) -> Self {
+        Self::new(http_body_util::Full::from(buf))
+    }
+}
+
+impl From<Vec<u8>> for Body {
+    fn from(buf: Vec<u8>) -> Self {
+        Self::new(http_body_util::Full::from(buf))
+    }
+}
+
+impl From<&'static [u8]> for Body {
+    fn from(buf: &'static [u8]) -> Self {
+        Self::new(http_body_util::Full::from(buf))
+    }
+}
+
+impl From<&'static str> for Body {
+    fn from(buf: &'static str) -> Self {
+        Self::new(http_body_util::Full::from(buf))
+    }
+}
+
+impl From<Cow<'static, [u8]>> for Body {
+    fn from(buf: Cow<'static, [u8]>) -> Self {
+        Self::new(http_body_util::Full::from(buf))
+    }
+}
+
+impl From<Bytes> for Body {
+    fn from(buf: Bytes) -> Self {
+        Self::new(http_body_util::Full::from(buf))
+    }
+}
+
 impl http_body::Body for Body {
     type Data = Bytes;
     type Error = BoxError;
@@ -86,3 +122,5 @@ pub type Request<T = Body> = HttpRequest<T>;
 pub use http::Response as HttpResponse;
 
 pub type Response<T = Body> = HttpResponse<T>;
+
+pub use tower::util::MapResponseLayer;
