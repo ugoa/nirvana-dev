@@ -110,8 +110,6 @@ where
         loop {
             let (io, remote_addr) = listener.accept().await;
 
-            println!("Task started on thread {:?}", std::thread::current().id());
-
             let io = monoio_compat::hyper::MonoioIo::new(io);
 
             make_service
@@ -130,17 +128,16 @@ where
 
             let hyper_service = TowerToHyperService::new(tower_service);
 
-            unsafe {
-                monoio::spawn(async move {
-                    if let Err(err) = http1::Builder::new()
-                        .timer(monoio_compat::hyper::MonoioTimer)
-                        .serve_connection(io, hyper_service)
-                        .await
-                    {
-                        println!("Error serving connection: {:?}", err);
-                    }
-                });
-            }
+            monoio::spawn(async move {
+                println!("Task started on thread {:?}", std::thread::current().id());
+                if let Err(err) = http1::Builder::new()
+                    .timer(monoio_compat::hyper::MonoioTimer)
+                    .serve_connection(io, hyper_service)
+                    .await
+                {
+                    println!("Error serving connection: {:?}", err);
+                }
+            });
         }
     }
 }
