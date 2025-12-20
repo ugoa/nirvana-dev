@@ -111,7 +111,7 @@ where
 
         match self.path_router.node.at(parts.uri.path()) {
             Ok(matched) => {
-                let route_id = *matched.value;
+                let route_id = matched.value;
 
                 let endpoint = self.path_router.routes.get(route_id.0).expect(
                     "It is granted a valid route for id. Please file an issue if it is not",
