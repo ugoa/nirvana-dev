@@ -15,6 +15,12 @@ impl<E> Route<E> {
         Self(LocalBoxCloneService::new(MapIntoResponse::new(svc)))
     }
 
+    /// Variant of [`Route::call`] that takes ownership of the route to avoid cloning.
+    pub(crate) fn call_owned(self, req: Request<Body>) -> RouteFuture<E> {
+        let req = req.map(Body::new);
+        self.oneshot_inner_owned(req)
+    }
+
     pub fn oneshot_inner(&self, req: Request) -> RouteFuture<E> {
         let method = req.method().clone();
         RouteFuture::new(method, self.0.clone().oneshot(req))

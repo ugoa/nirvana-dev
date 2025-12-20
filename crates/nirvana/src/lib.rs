@@ -14,7 +14,7 @@ mod prelude {
 
 pub use self::{
     extract::state::State, response::IntoResponse, routing::method_router::get,
-    routing::route::Route, routing::router::SimpleRouter, serve::serve,
+    routing::route::Route, serve::serve,
 };
 
 #[macro_use]

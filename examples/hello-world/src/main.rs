@@ -8,9 +8,10 @@ use futures::Future;
 use http_body_util::Full;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper::{server::conn::http1, service::service_fn};
-use monoio::{io::IntoPollIo, net::TcpListener};
+use monoio::net::TcpListener;
 
-use nirvana::{SimpleRouter, State, extract::query::Query, get};
+use nirvana::routing::router::Router;
+use nirvana::{State, extract::query::Query, get};
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -69,7 +70,7 @@ async fn main() {
 
     let addr: SocketAddr = ([0, 0, 0, 0], 9527).into();
     let listener = TcpListener::bind(addr).unwrap();
-    let app = SimpleRouter::new()
+    let app = Router::new()
         .route("/", get(root))
         .route("/sub", get(sub))
         .with_state(AppState {

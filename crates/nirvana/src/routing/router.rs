@@ -8,11 +8,11 @@ use std::rc::Rc;
 use std::{collections::HashMap, convert::Infallible};
 use tower::Layer;
 
-#[derive(Clone)]
-pub struct SimpleRouter<S = ()> {
-    routes: Vec<MethodRouter<S>>,
-    node: Node,
-}
+// #[derive(Clone)]
+// pub struct SimpleRouter<S = ()> {
+//     routes: Vec<MethodRouter<S>>,
+//     node: Node,
+// }
 
 #[must_use]
 #[derive(Clone)]
@@ -99,21 +99,31 @@ where
         }
     }
 
-    pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
-        // let (req, state) = match self.path_router.call_with_state(req, state) {
-        //     Ok(future) => return future,
-        //     Err((req, state)) => (req, state),
-        // };
-        //
-        // self.inner
-        //     .catch_all_fallback
-        //     .clone()
-        //     .call_with_state(req, state)
-        //
-        //
-        match self.path_router.call_with_state(req, state) {
-            Ok(future) => return future,
-            Err((req, state)) => (req, state),
+    pub(crate) fn call_with_state(
+        &self,
+        req: Request,
+        state: S,
+    ) -> Result<RouteFuture<Infallible>, (Request, S)> {
+        let (mut parts, body) = req.into_parts();
+
+        match self.path_router.node.at(parts.uri.path()) {
+            Ok(matched) => {
+                let route_id = *matched.value;
+
+                let endpoint = self.path_router.routes.get(route_id.0).expect(
+                    "It is granted a valid route for id. Please file an issue if it is not",
+                );
+
+                let req = Request::from_parts(parts, body);
+
+                match endpoint {
+                    Endpoint::MethodRouter(method_router) => {
+                        Ok(method_router.call_with_state(req, state))
+                    }
+                    Endpoint::Route(route) => Ok(route.clone().call_owned(req)),
+                }
+            }
+            Err(MatchError::NotFound) => Err((Request::from_parts(parts, body), state)),
         }
     }
 }
@@ -130,54 +140,54 @@ enum Fallback<S, E = Infallible> {
     BoxedHandler(BoxedIntoRoute<S, E>),
 }
 
-impl<S> SimpleRouter<S>
-where
-    S: Clone + 'static,
-{
-    pub fn new() -> Self {
-        Self {
-            routes: Default::default(),
-            node: Default::default(),
-        }
-    }
-
-    pub fn route(mut self, path: &str, method_router: MethodRouter<S>) -> Self {
-        if let Some(route_id) = self.node.path_to_route_id.get(path) {
-            if let Some(prev_method_router) = self.routes.get(route_id.0) {
-                // merge to existing router
-                todo!()
-            }
-        } else {
-            let new_route_id = RouteId(self.routes.len());
-            self.node.insert(path, new_route_id);
-            self.routes.push(method_router);
-        }
-
-        self
-    }
-
-    pub fn with_state<S2>(&self, state: S) -> SimpleRouter<S2> {
-        let method_routers = (0..self.routes.len())
-            .map(|i| self.routes[i].clone().with_state(state.clone()))
-            .collect();
-
-        let node = self.node.clone();
-        SimpleRouter {
-            routes: method_routers,
-            node: node,
-        }
-    }
-
-    pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
-        let (parts, body) = req.into_parts();
-
-        let matched = self.node.at(parts.uri.path()).unwrap();
-
-        let id = *matched.value;
-
-        let endpoint = self.routes.get(id.0).unwrap();
-
-        let req = Request::from_parts(parts, body);
-        endpoint.call_with_state(req, state)
-    }
-}
+// impl<S> SimpleRouter<S>
+// where
+//     S: Clone + 'static,
+// {
+//     pub fn new() -> Self {
+//         Self {
+//             routes: Default::default(),
+//             node: Default::default(),
+//         }
+//     }
+//
+//     pub fn route(mut self, path: &str, method_router: MethodRouter<S>) -> Self {
+//         if let Some(route_id) = self.node.path_to_route_id.get(path) {
+//             if let Some(prev_method_router) = self.routes.get(route_id.0) {
+//                 // merge to existing router
+//                 todo!()
+//             }
+//         } else {
+//             let new_route_id = RouteId(self.routes.len());
+//             self.node.insert(path, new_route_id);
+//             self.routes.push(method_router);
+//         }
+//
+//         self
+//     }
+//
+//     pub fn with_state<S2>(&self, state: S) -> SimpleRouter<S2> {
+//         let method_routers = (0..self.routes.len())
+//             .map(|i| self.routes[i].clone().with_state(state.clone()))
+//             .collect();
+//
+//         let node = self.node.clone();
+//         SimpleRouter {
+//             routes: method_routers,
+//             node: node,
+//         }
+//     }
+//
+//     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
+//         let (parts, body) = req.into_parts();
+//
+//         let matched = self.node.at(parts.uri.path()).unwrap();
+//
+//         let id = *matched.value;
+//
+//         let endpoint = self.routes.get(id.0).unwrap();
+//
+//         let req = Request::from_parts(parts, body);
+//         endpoint.call_with_state(req, state)
+//     }
+// }
