@@ -4,9 +4,9 @@ resolver = "3"
 members = [
   "examples/*",
   "crates/nirvana",
-  "crates/monoio",
-  "crates/monoio-compat",
-  "crates/monoio-macros",
+  # "crates/monoio",
+  # "crates/monoio-compat",
+  # "crates/monoio-macros",
 ]
 
 [workspace.lints.clippy]
