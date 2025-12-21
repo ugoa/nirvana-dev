@@ -52,6 +52,10 @@ async fn root() -> &'static str {
     "Hello Daisy"
 }
 
+async fn dont_worry() -> &'static str {
+    "No man land"
+}
+
 async fn sub(
     Query(q): Query<DummyParams>,
     State(app_state): State<AppState>,
@@ -91,6 +95,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root))
         .route("/sub", get(sub))
+        .fallback(dont_worry)
         // .layer(dummy_middleware)
         .with_state(AppState {
             data: "no arc".to_string(),
