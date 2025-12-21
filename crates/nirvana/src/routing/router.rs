@@ -73,7 +73,17 @@ where
             .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
-    pub fn layer<L>(self, layer: L) -> Self
+    pub fn fallback<H, T>(mut self, handler: H) -> Self
+    where
+        H: Handler<T, S>,
+        T: 'static,
+    {
+        self.catch_all_fallback =
+            Fallback::BoxedHandler(BoxedIntoRoute::from_handler(handler.clone()));
+        self
+    }
+
+    pub fn layer<L>(mut self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + 'static,
         L::Service: TowerService<Request> + Clone + 'static,
@@ -81,20 +91,17 @@ where
         <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as TowerService<Request>>::Future: 'static,
     {
-        let routes = self
+        self.routes = self
             .routes
             .into_iter()
             .map(|endpoint| endpoint.layer(layer.clone()))
             .collect();
 
-        Self {
-            routes,
-            node: self.node,
-            default_fallback: self.default_fallback,
-        }
+        self.catch_all_fallback = self.catch_all_fallback.map(|route| route.layer(layer));
+        self
     }
 
-    pub fn route_layer<L>(self, layer: L) -> Self
+    pub fn route_layer<L>(mut self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + 'static,
         L::Service: TowerService<Request> + Clone + 'static,
@@ -102,20 +109,15 @@ where
         <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as TowerService<Request>>::Future: 'static,
     {
-        let routes = self
+        self.routes = self
             .routes
             .into_iter()
             .map(|endpoint| endpoint.layer(layer.clone()))
             .collect();
-
-        Self {
-            routes,
-            node: self.node,
-            default_fallback: self.default_fallback,
-        }
+        self
     }
 
-    pub fn with_state<S2>(self, state: S) -> Router<S2> {
+    pub fn with_state<S2>(mut self, state: S) -> Router<S2> {
         let routes = self
             .routes
             .into_iter()
@@ -131,6 +133,7 @@ where
             routes,
             node: self.node,
             default_fallback: self.default_fallback,
+            catch_all_fallback: self.catch_all_fallback.with_state(state),
         }
     }
 
@@ -243,6 +246,42 @@ impl<S, E> Clone for Fallback<S, E> {
             Self::Default(inner) => Self::Default(inner.clone()),
             Self::Service(inner) => Self::Service(inner.clone()),
             Self::BoxedHandler(inner) => Self::BoxedHandler(inner.clone()),
+        }
+    }
+}
+impl<S, E> fmt::Debug for Fallback<S, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Default(inner) => f.debug_tuple("Default").field(inner).finish(),
+            Self::Service(inner) => f.debug_tuple("Service").field(inner).finish(),
+            Self::BoxedHandler(_) => f.debug_tuple("BoxedHandler").finish(),
+        }
+    }
+}
+
+impl<S, E> Fallback<S, E>
+where
+    S: Clone,
+{
+    fn map<F, E2>(self, f: F) -> Fallback<S, E2>
+    where
+        S: 'static,
+        E: 'static,
+        F: FnOnce(Route<E>) -> Route<E2> + Clone + 'static,
+        E2: 'static,
+    {
+        match self {
+            Self::Default(route) => Fallback::Default(f(route)),
+            Self::Service(route) => Fallback::Service(f(route)),
+            Self::BoxedHandler(handler) => Fallback::BoxedHandler(handler.map(f)),
+        }
+    }
+
+    fn with_state<S2>(self, state: S) -> Fallback<S2, E> {
+        match self {
+            Self::Default(route) => Fallback::Default(route),
+            Self::Service(route) => Fallback::Service(route),
+            Self::BoxedHandler(handler) => Fallback::Service(handler.into_route(state)),
         }
     }
 }
