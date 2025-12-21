@@ -262,6 +262,16 @@ impl<S, E> Fallback<S, E>
 where
     S: Clone,
 {
+    pub fn merge(self, other: Self) -> Option<Self> {
+        match (self, other) {
+            // If either are `Default`, return the opposite one.
+            (Self::Default(_), pick) => Some(pick),
+            (pick, Self::Default(_)) => Some(pick),
+            // Otherwise, return None
+            _ => None,
+        }
+    }
+
     pub fn map<F, E2>(self, f: F) -> Fallback<S, E2>
     where
         S: 'static,
