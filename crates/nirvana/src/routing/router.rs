@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::routing::method_router::MethodRouter;
-use crate::routing::path_router::{Endpoint, Node, PathRouter, RouteId};
+use crate::routing::path_router::{Endpoint, Node, RouteId};
 use crate::routing::route_tower::RouteFuture;
 use crate::{handler::Handler, routing::route::BoxedIntoRoute};
 use matchit::MatchError;
@@ -17,7 +17,8 @@ use tower::Layer;
 #[must_use]
 #[derive(Clone)]
 pub struct Router<S = ()> {
-    pub path_router: PathRouter<S>,
+    pub routes: Vec<Endpoint<S>>,
+    pub node: Node,
     pub default_fallback: bool,
 }
 
@@ -36,17 +37,42 @@ where
 {
     pub fn new() -> Self {
         Self {
-            path_router: Default::default(),
+            routes: Default::default(),
+            node: Default::default(),
             default_fallback: true,
         }
     }
 
     pub fn route(mut self, path: &str, method_router: MethodRouter<S>) -> Self {
-        match (self.path_router.route(path, method_router)) {
-            Ok(x) => x,
-            Err(err) => panic!("{err}"),
-        };
+        if let Some(route_id) = self.node.path_to_route_id.get(path) {
+            if let Some(Endpoint::MethodRouter(prev_method_router)) = self.routes.get(route_id.0) {
+                let service = Endpoint::MethodRouter(
+                    prev_method_router
+                        .clone()
+                        .merge_for_path(Some(path), method_router)
+                        .unwrap(),
+                );
+                self.routes[route_id.0] = service;
+            }
+        } else {
+            let endpoint = Endpoint::MethodRouter(method_router);
+            self.new_route(path, endpoint).unwrap();
+        }
+
         self
+    }
+
+    fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
+        let id = RouteId(self.routes.len());
+        self.set_node(path, id)?;
+        self.routes.push(endpoint);
+        Ok(())
+    }
+
+    fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
+        self.node
+            .insert(path, id)
+            .map_err(|err| format!("Invalid route {path:?}: {err}"))
     }
 
     pub fn layer<L>(self, layer: L) -> Self
@@ -57,8 +83,15 @@ where
         <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as TowerService<Request>>::Future: 'static,
     {
-        Router {
-            path_router: self.path_router.layer(layer.clone()),
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|endpoint| endpoint.layer(layer.clone()))
+            .collect();
+
+        Self {
+            routes,
+            node: self.node,
             default_fallback: self.default_fallback,
         }
     }
@@ -71,33 +104,34 @@ where
         <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
         <L::Service as TowerService<Request>>::Future: 'static,
     {
-        Router {
-            path_router: self.path_router.layer(layer),
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|endpoint| endpoint.layer(layer.clone()))
+            .collect();
+
+        Self {
+            routes,
+            node: self.node,
             default_fallback: self.default_fallback,
         }
     }
 
     pub fn with_state<S2>(self, state: S) -> Router<S2> {
-        let path_router = {
-            let this = self.path_router;
+        let routes = self
+            .routes
+            .into_iter()
+            .map(|endpoint| match endpoint {
+                Endpoint::MethodRouter(method_router) => {
+                    Endpoint::MethodRouter(method_router.with_state(state.clone()))
+                }
+                Endpoint::Route(route) => Endpoint::Route(route),
+            })
+            .collect();
 
-            let routes = this
-                .routes
-                .into_iter()
-                .map(|endpoint| match endpoint {
-                    Endpoint::MethodRouter(method_router) => {
-                        Endpoint::MethodRouter(method_router.with_state(state.clone()))
-                    }
-                    Endpoint::Route(route) => Endpoint::Route(route),
-                })
-                .collect();
-            PathRouter {
-                routes,
-                node: this.node,
-            }
-        };
         Router {
-            path_router: path_router,
+            routes,
+            node: self.node,
             default_fallback: self.default_fallback,
         }
     }
@@ -109,11 +143,11 @@ where
     ) -> Result<RouteFuture<Infallible>, (Request, S)> {
         let (mut parts, body) = req.into_parts();
 
-        match self.path_router.node.at(parts.uri.path()) {
+        match self.node.at(parts.uri.path()) {
             Ok(matched) => {
                 let route_id = matched.value;
 
-                let endpoint = self.path_router.routes.get(route_id.0).expect(
+                let endpoint = self.routes.get(route_id.0).expect(
                     "It is granted a valid route for id. Please file an issue if it is not",
                 );
 
@@ -129,12 +163,6 @@ where
             Err(MatchError::NotFound) => Err((Request::from_parts(parts, body), state)),
         }
     }
-}
-
-struct RouterInner<S> {
-    pub path_router: PathRouter<S>,
-    pub default_fallback: bool,
-    // catch_all_fallback: Fallback<S>,
 }
 
 enum Fallback<S, E = Infallible> {

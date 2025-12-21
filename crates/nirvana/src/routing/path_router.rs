@@ -5,102 +5,102 @@ use tower::Layer;
 
 use crate::{prelude::*, routing::method_router::MethodRouter};
 
-pub(super) struct PathRouter<S> {
-    pub routes: Vec<Endpoint<S>>,
-    pub node: Node,
-}
-
-impl<S> Default for PathRouter<S> {
-    fn default() -> Self {
-        Self {
-            routes: Default::default(),
-            node: Default::default(),
-        }
-    }
-}
-
-impl<S> PathRouter<S>
-where
-    S: Clone + 'static,
-{
-    pub fn route(&mut self, path: &str, method_router: MethodRouter<S>) -> Result<(), String> {
-        if let Some(route_id) = self.node.path_to_route_id.get(path) {
-            if let Some(Endpoint::MethodRouter(prev_method_router)) = self.routes.get(route_id.0) {
-                let service = Endpoint::MethodRouter(
-                    prev_method_router
-                        .clone()
-                        .merge_for_path(Some(path), method_router)?,
-                );
-                self.routes[route_id.0] = service;
-            }
-        } else {
-            let endpoint = Endpoint::MethodRouter(method_router);
-            self.new_route(path, endpoint)?;
-        }
-
-        Ok(())
-    }
-
-    fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
-        let id = RouteId(self.routes.len());
-        self.set_node(path, id)?;
-        self.routes.push(endpoint);
-        Ok(())
-    }
-
-    fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
-        self.node
-            .insert(path, id)
-            .map_err(|err| format!("Invalid route {path:?}: {err}"))
-    }
-
-    pub(super) fn layer<L>(self, layer: L) -> Self
-    where
-        L: Layer<Route> + Clone + 'static,
-        L::Service: TowerService<Request> + Clone + 'static,
-        <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
-        <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
-        <L::Service as TowerService<Request>>::Future: 'static,
-    {
-        let routes = self
-            .routes
-            .into_iter()
-            .map(|endpoint| endpoint.layer(layer.clone()))
-            .collect();
-
-        Self {
-            routes,
-            node: self.node,
-        }
-    }
-
-    pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2> {
-        let routes = self
-            .routes
-            .into_iter()
-            .map(|endpoint| match endpoint {
-                Endpoint::MethodRouter(method_router) => {
-                    Endpoint::MethodRouter(method_router.with_state(state.clone()))
-                }
-                Endpoint::Route(route) => Endpoint::Route(route),
-            })
-            .collect();
-
-        PathRouter {
-            routes,
-            node: self.node,
-        }
-    }
-}
-
-impl<S> Clone for PathRouter<S> {
-    fn clone(&self) -> Self {
-        Self {
-            routes: self.routes.clone(),
-            node: self.node.clone(),
-        }
-    }
-}
+// pub(super) struct PathRouter<S> {
+//     pub routes: Vec<Endpoint<S>>,
+//     pub node: Node,
+// }
+//
+// impl<S> Default for PathRouter<S> {
+//     fn default() -> Self {
+//         Self {
+//             routes: Default::default(),
+//             node: Default::default(),
+//         }
+//     }
+// }
+//
+// impl<S> PathRouter<S>
+// where
+//     S: Clone + 'static,
+// {
+//     pub fn route(&mut self, path: &str, method_router: MethodRouter<S>) -> Result<(), String> {
+//         if let Some(route_id) = self.node.path_to_route_id.get(path) {
+//             if let Some(Endpoint::MethodRouter(prev_method_router)) = self.routes.get(route_id.0) {
+//                 let service = Endpoint::MethodRouter(
+//                     prev_method_router
+//                         .clone()
+//                         .merge_for_path(Some(path), method_router)?,
+//                 );
+//                 self.routes[route_id.0] = service;
+//             }
+//         } else {
+//             let endpoint = Endpoint::MethodRouter(method_router);
+//             self.new_route(path, endpoint)?;
+//         }
+//
+//         Ok(())
+//     }
+//
+//     fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
+//         let id = RouteId(self.routes.len());
+//         self.set_node(path, id)?;
+//         self.routes.push(endpoint);
+//         Ok(())
+//     }
+//
+//     fn set_node(&mut self, path: &str, id: RouteId) -> Result<(), String> {
+//         self.node
+//             .insert(path, id)
+//             .map_err(|err| format!("Invalid route {path:?}: {err}"))
+//     }
+//
+//     pub(super) fn layer<L>(self, layer: L) -> Self
+//     where
+//         L: Layer<Route> + Clone + 'static,
+//         L::Service: TowerService<Request> + Clone + 'static,
+//         <L::Service as TowerService<Request>>::Response: IntoResponse + 'static,
+//         <L::Service as TowerService<Request>>::Error: Into<Infallible> + 'static,
+//         <L::Service as TowerService<Request>>::Future: 'static,
+//     {
+//         let routes = self
+//             .routes
+//             .into_iter()
+//             .map(|endpoint| endpoint.layer(layer.clone()))
+//             .collect();
+//
+//         Self {
+//             routes,
+//             node: self.node,
+//         }
+//     }
+//
+//     pub(super) fn with_state<S2>(self, state: S) -> PathRouter<S2> {
+//         let routes = self
+//             .routes
+//             .into_iter()
+//             .map(|endpoint| match endpoint {
+//                 Endpoint::MethodRouter(method_router) => {
+//                     Endpoint::MethodRouter(method_router.with_state(state.clone()))
+//                 }
+//                 Endpoint::Route(route) => Endpoint::Route(route),
+//             })
+//             .collect();
+//
+//         PathRouter {
+//             routes,
+//             node: self.node,
+//         }
+//     }
+// }
+//
+// impl<S> Clone for PathRouter<S> {
+//     fn clone(&self) -> Self {
+//         Self {
+//             routes: self.routes.clone(),
+//             node: self.node.clone(),
+//         }
+//     }
+// }
 
 #[allow(clippy::large_enum_variant)]
 pub enum Endpoint<S> {
@@ -112,7 +112,7 @@ impl<S> Endpoint<S>
 where
     S: Clone + 'static,
 {
-    fn layer<L>(self, layer: L) -> Self
+    pub fn layer<L>(self, layer: L) -> Self
     where
         L: Layer<Route> + Clone + 'static,
         L::Service: TowerService<Request> + Clone + 'static,
