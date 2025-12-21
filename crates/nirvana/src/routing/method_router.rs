@@ -94,8 +94,8 @@ where
 
         // If reached here, it means there is no endpoint found for current request,
         // we use fallback to such case.
-        self.fallback.clone().call_with_state(req, state)
         // todo add allow_header
+        self.fallback.clone().call_with_state(req, state)
     }
 
     pub fn layer<L, E2>(self, layer: L) -> MethodRouter<S, E2>
@@ -121,6 +121,7 @@ where
             put: self.put.map(layer_fn.clone()),
             trace: self.trace.map(layer_fn.clone()),
             connect: self.connect.map(layer_fn.clone()),
+            fallback: self.fallback.map(layer_fn),
         }
     }
 
@@ -203,6 +204,7 @@ impl<S, E> Clone for MethodRouter<S, E> {
             put: self.put.clone(),
             trace: self.trace.clone(),
             connect: self.connect.clone(),
+            fallback: self.fallback.clone(),
         }
     }
 }
