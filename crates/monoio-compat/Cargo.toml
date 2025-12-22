@@ -2,7 +2,6 @@
 name = "mondayio-compat"
 readme = "README.md"
 version = "0.2.2"
-publish = false
 authors = ["ChiHai <ihciah@gmail.com>", "XuShuai <dyxushuai@gmail.com>", "Dawei Hu <hoodavy@gmail.com>"]
 categories = ["asynchronous", "network-programming"]
 description = "A compat wrapper for monoio."
