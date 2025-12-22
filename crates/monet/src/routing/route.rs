@@ -20,10 +20,6 @@ impl<E> Route<E> {
         self.call(req.map(Body::new))
     }
 
-    pub fn call_inner(&self, req: Request) -> RouteFuture<E> {
-        RouteFuture::new(req.method().clone(), self.0.clone().oneshot(req))
-    }
-
     pub fn call(self, req: Request) -> RouteFuture<E> {
         RouteFuture::new(req.method().clone(), self.0.oneshot(req))
     }

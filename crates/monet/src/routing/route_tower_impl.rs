@@ -7,28 +7,9 @@ use std::{
 };
 use tower::util::{Oneshot, ServiceExt};
 
-impl<B, E> TowerService<Request<B>> for Route<E>
-where
-    B: HttpBody<Data = bytes::Bytes> + 'static,
-    B::Error: Into<BoxError>,
-{
-    type Response = Response;
-
-    type Error = E;
-
-    type Future = RouteFuture<E>;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<B>) -> Self::Future {
-        self.call_inner(req.map(Body::new))
-    }
-}
-
 /// A local boxed [`Service`] trait object with `Clone`. Same with UnsyncBoxService
 /// Ref: https://github.com/tower-rs/tower/blob/tower-0.5.2/tower/src/util/boxed/unsync.rs#L12
+
 pub struct LocalBoxCloneService<T, U, E>(
     Box<
         dyn ClonableService<

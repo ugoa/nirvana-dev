@@ -128,9 +128,7 @@ where
                 Endpoint::MethodRouter(method_router) => {
                     this.process_route(path, method_router).unwrap()
                 }
-                Endpoint::Route(service) => this
-                    .new_route(path, Endpoint::Route(Route::new(service)))
-                    .unwrap(),
+                Endpoint::Route(route) => this.new_route(path, Endpoint::Route(route)).unwrap(),
             }
         }
         Router {
