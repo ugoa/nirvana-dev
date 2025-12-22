@@ -29,6 +29,23 @@ pub struct MethodRouter<S = (), E = Infallible> {
     fallback: Fallback<S, E>,
 }
 
+impl<S, E> fmt::Debug for MethodRouter<S, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MethodRouter")
+            .field("get", &self.get)
+            .field("head", &self.head)
+            .field("delete", &self.delete)
+            .field("options", &self.options)
+            .field("patch", &self.patch)
+            .field("post", &self.post)
+            .field("put", &self.put)
+            .field("trace", &self.trace)
+            .field("connect", &self.connect)
+            .field("fallback", &self.fallback)
+            .finish()
+    }
+}
+
 impl<S, E> MethodRouter<S, E>
 where
     S: Clone,
@@ -216,6 +233,16 @@ enum MethodEndpoint<S, E> {
     None,
     Route(Route<E>),
     BoxedHandler(BoxedIntoRoute<S, E>),
+}
+
+impl<S, E> fmt::Debug for MethodEndpoint<S, E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::None => f.debug_tuple("None").finish(),
+            Self::Route(inner) => inner.fmt(f),
+            Self::BoxedHandler(_) => f.debug_tuple("BoxedHandler").finish(),
+        }
+    }
 }
 
 impl<S, E> MethodEndpoint<S, E>

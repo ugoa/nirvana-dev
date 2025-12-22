@@ -16,6 +16,17 @@ pub struct Router<S = ()> {
     pub catch_all_fallback: Fallback<S>,
 }
 
+impl<S> fmt::Debug for Router<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Router")
+            .field("routes", &self.routes)
+            .field("node", &self.node)
+            .field("default_fallback", &self.default_fallback)
+            .field("catch_all_fallback", &self.catch_all_fallback)
+            .finish()
+    }
+}
+
 impl<S> Default for Router<S>
 where
     S: Clone + 'static,
@@ -41,23 +52,35 @@ where
         }
     }
 
-    pub fn route(mut self, path: &str, method_router: MethodRouter<S>) -> Self {
-        if let Some(route_id) = self.node.path_to_route_id.get(path) {
-            if let Some(Endpoint::MethodRouter(prev_method_router)) = self.routes.get(route_id.0) {
+    pub fn route(self, path: &str, method_router: MethodRouter<S>) -> Self {
+        let mut this = self.clone();
+
+        match (this.process_route(path, method_router)) {
+            Ok(x) => x,
+            Err(err) => {
+                panic!("{err}")
+            }
+        };
+        this
+    }
+
+    fn process_route(&mut self, path: &str, method_router: MethodRouter<S>) -> Result<(), String> {
+        let mut this = self.clone();
+        if let Some(route_id) = this.node.path_to_route_id.get(path) {
+            if let Some(Endpoint::MethodRouter(prev_method_router)) = this.routes.get(route_id.0) {
                 let service = Endpoint::MethodRouter(
                     prev_method_router
                         .clone()
                         .merge_for_path(Some(path), method_router)
                         .unwrap(),
                 );
-                self.routes[route_id.0] = service;
+                this.routes[route_id.0] = service;
             }
         } else {
             let endpoint = Endpoint::MethodRouter(method_router);
-            self.new_route(path, endpoint).unwrap();
+            this.new_route(path, endpoint).unwrap();
         }
-
-        self
+        Ok(())
     }
 
     fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
@@ -71,6 +94,53 @@ where
         self.node
             .insert(path, id)
             .map_err(|err| format!("Invalid route {path:?}: {err}"))
+    }
+
+    pub fn merge<R>(self, other: R) -> Self
+    where
+        R: Into<Self>,
+    {
+        let mut this = self.clone();
+        let other: Self = other.into();
+
+        let default_fallback = match (this.default_fallback, other.default_fallback) {
+            (_, true) => this.default_fallback,
+            (true, false) => false,
+
+            (false, false) => {
+                panic!("Cannot merge two `Router`s that both have a fallback");
+            }
+        };
+
+        let catch_all_fallback = this
+            .catch_all_fallback
+            .clone()
+            .merge(other.catch_all_fallback)
+            .unwrap_or_else(|| panic!("Cannot merge two `Router`s that both have a fallback"));
+
+        for (id, route) in other.routes.into_iter().enumerate() {
+            let route_id = RouteId(id);
+            let path = other
+                .node
+                .route_id_to_path
+                .get(&route_id)
+                .expect("no path for route id. This is a bug in axum. Please file an issue");
+
+            match route {
+                Endpoint::MethodRouter(method_router) => {
+                    this.process_route(path, method_router).unwrap()
+                }
+                Endpoint::Route(service) => this
+                    .new_route(path, Endpoint::Route(Route::new(service)))
+                    .unwrap(),
+            }
+        }
+        Router {
+            routes: this.routes,
+            node: this.node,
+            default_fallback: default_fallback,
+            catch_all_fallback: catch_all_fallback,
+        }
     }
 
     pub fn fallback<H, T>(mut self, handler: H) -> Self
@@ -140,6 +210,8 @@ where
     pub(crate) fn call_with_state(&self, req: Request, state: S) -> RouteFuture<Infallible> {
         let (mut parts, body) = req.into_parts();
 
+        println!("{:?}", &self);
+
         match self.node.at(parts.uri.path()) {
             Ok(matched) => {
                 let route_id = matched.value;
@@ -169,6 +241,17 @@ where
 pub enum Endpoint<S> {
     MethodRouter(MethodRouter<S>),
     Route(Route),
+}
+
+impl<S> fmt::Debug for Endpoint<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MethodRouter(method_router) => {
+                f.debug_tuple("MethodRouter").field(method_router).finish()
+            }
+            Self::Route(route) => f.debug_tuple("Route").field(route).finish(),
+        }
+    }
 }
 
 impl<S> Endpoint<S>
@@ -207,6 +290,14 @@ pub struct Node {
     pub inner: matchit::Router<RouteId>,
     pub route_id_to_path: HashMap<RouteId, String>,
     pub path_to_route_id: HashMap<String, RouteId>,
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Node")
+            .field("paths", &self.route_id_to_path)
+            .finish()
+    }
 }
 
 impl Node {
