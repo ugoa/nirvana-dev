@@ -52,35 +52,23 @@ where
         }
     }
 
-    pub fn route(self, path: &str, method_router: MethodRouter<S>) -> Self {
-        let mut this = self.clone();
-
-        match (this.process_route(path, method_router)) {
-            Ok(x) => x,
-            Err(err) => {
-                panic!("{err}")
-            }
-        };
-        this
-    }
-
-    fn process_route(&mut self, path: &str, method_router: MethodRouter<S>) -> Result<(), String> {
-        let mut this = self.clone();
-        if let Some(route_id) = this.node.path_to_route_id.get(path) {
-            if let Some(Endpoint::MethodRouter(prev_method_router)) = this.routes.get(route_id.0) {
+    pub fn route(mut self, path: &str, method_router: MethodRouter<S>) -> Self {
+        if let Some(route_id) = self.node.path_to_route_id.get(path) {
+            if let Some(Endpoint::MethodRouter(prev_method_router)) = self.routes.get(route_id.0) {
                 let service = Endpoint::MethodRouter(
                     prev_method_router
                         .clone()
                         .merge_for_path(Some(path), method_router)
                         .unwrap(),
                 );
-                this.routes[route_id.0] = service;
+                self.routes[route_id.0] = service;
             }
         } else {
             let endpoint = Endpoint::MethodRouter(method_router);
-            this.new_route(path, endpoint).unwrap();
+            self.new_route(path, endpoint).unwrap();
         }
-        Ok(())
+
+        self
     }
 
     fn new_route(&mut self, path: &str, endpoint: Endpoint<S>) -> Result<(), String> {
@@ -126,14 +114,16 @@ where
                 .get(&route_id)
                 .expect("no path for route id. This is a bug in axum. Please file an issue");
 
-            match route {
-                Endpoint::MethodRouter(method_router) => {
-                    this.process_route(path, method_router).unwrap()
-                }
-                Endpoint::Route(service) => this
-                    .new_route(path, Endpoint::Route(Route::new(service)))
-                    .unwrap(),
-            }
+            todo!()
+
+            // match route {
+            //     Endpoint::MethodRouter(method_router) => {
+            //         this.process_route(path, method_router).unwrap()
+            //     }
+            //     Endpoint::Route(service) => this
+            //         .new_route(path, Endpoint::Route(Route::new(service)))
+            //         .unwrap(),
+            // }
         }
         Router {
             routes: this.routes,
