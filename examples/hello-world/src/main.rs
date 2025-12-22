@@ -52,6 +52,14 @@ async fn root() -> &'static str {
     "Hello Daisy"
 }
 
+async fn merge1() -> &'static str {
+    "merge 1"
+}
+
+async fn merge2() -> &'static str {
+    "merge 2"
+}
+
 async fn dont_worry() -> &'static str {
     "No man land"
 }
@@ -92,9 +100,16 @@ async fn main() {
         }
         res
     });
+
+    let user_routes = Router::new().route("/users", get(merge1));
+
+    let team_routes = Router::new().route("/teams", get(merge2));
+
     let app = Router::new()
         .route("/", get(root))
         .route("/sub", get(sub))
+        .merge(user_routes)
+        .merge(team_routes)
         .fallback(dont_worry)
         // .layer(dummy_middleware)
         .with_state(AppState {
