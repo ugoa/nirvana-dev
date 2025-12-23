@@ -96,7 +96,7 @@ where
     S: TowerService<http::Request<B>>,
     S::Response: IntoResponse,
 {
-    type Response = Response;
+    type Response = HttpResponse;
     type Error = S::Error;
     type Future = MapIntoResponseFuture<S::Future>;
 
@@ -115,7 +115,7 @@ pin_project! {
     /// Response future for [`Route`].
     pub struct RouteFuture<E> {
         #[pin]
-        inner: Oneshot<LocalBoxCloneService<HttpRequest,Response,E> , HttpRequest>,
+        inner: Oneshot<LocalBoxCloneService<HttpRequest,HttpResponse,E> , HttpRequest>,
         method: Method,
     }
 }
@@ -123,14 +123,14 @@ pin_project! {
 impl<E> RouteFuture<E> {
     pub fn new(
         method: Method,
-        inner: Oneshot<LocalBoxCloneService<HttpRequest, Response, E>, HttpRequest>,
+        inner: Oneshot<LocalBoxCloneService<HttpRequest, HttpResponse, E>, HttpRequest>,
     ) -> Self {
         Self { inner, method }
     }
 }
 
 impl<E> Future for RouteFuture<E> {
-    type Output = Result<Response, E>;
+    type Output = Result<HttpResponse, E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -153,7 +153,7 @@ where
     F: Future<Output = Result<T, E>>,
     T: IntoResponse,
 {
-    type Output = Result<Response, E>;
+    type Output = Result<HttpResponse, E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let res = ready!(self.project().inner.poll(cx)?);

@@ -1,5 +1,5 @@
 use crate::{
-    Body, BoxError, HttpBody, HttpRequest, IntoResponse, Response, TowerService,
+    Body, BoxError, HttpBody, HttpRequest, HttpResponse, IntoResponse, TowerService,
     routing::{
         route_tower_impl::RouteFuture,
         router::{NotFound, Router},
@@ -36,7 +36,7 @@ where
     B: HttpBody<Data = bytes::Bytes> + 'static,
     B::Error: Into<BoxError>,
 {
-    type Response = Response;
+    type Response = HttpResponse;
 
     type Error = Infallible;
 
@@ -56,9 +56,9 @@ impl<B> TowerService<HttpRequest<B>> for NotFound
 where
     B: 'static,
 {
-    type Response = Response;
+    type Response = HttpResponse;
     type Error = Infallible;
-    type Future = std::future::Ready<Result<Response, Self::Error>>;
+    type Future = std::future::Ready<Result<HttpResponse, Self::Error>>;
 
     #[inline]
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

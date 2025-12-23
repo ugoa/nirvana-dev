@@ -10,7 +10,7 @@ use hyper::{Method, StatusCode};
 use hyper::{server::conn::http1, service::service_fn};
 use monoio::net::TcpListener;
 
-use monet::{MapResponseLayer, Response, Router, State, extract::query::Query, get};
+use monet::{HttpResponse, MapResponseLayer, Router, State, extract::query::Query, get};
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -84,7 +84,7 @@ async fn main() {
     let addr: SocketAddr = ([0, 0, 0, 0], 9527).into();
     let listener = TcpListener::bind(addr).unwrap();
 
-    let dummy_middleware = MapResponseLayer::new(|mut res: Response| -> Response {
+    let dummy_middleware = MapResponseLayer::new(|mut res: HttpResponse| -> HttpResponse {
         // If there is a content-length header, its value will be zero and axum will avoid
         // overwriting it. But this means our content-length doesn’t match the length of the
         // body, which leads to panics in Hyper. Thus we have to ensure that axum doesn’t add

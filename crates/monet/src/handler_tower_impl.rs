@@ -7,7 +7,7 @@ use std::{
 use futures::future::Map;
 
 use crate::{
-    Body, BoxError, HttpBody, HttpRequest, Response, TowerService,
+    Body, BoxError, HttpBody, HttpRequest, HttpResponse, TowerService,
     extract::{FromRequest, FromRequestParts},
     handler::{Handler, HandlerService},
     opaque_future,
@@ -21,7 +21,7 @@ where
     B::Error: Into<BoxError>,
     S: Clone,
 {
-    type Response = Response;
+    type Response = HttpResponse;
 
     type Error = Infallible;
 
@@ -49,7 +49,7 @@ opaque_future! {
     pub type IntoServiceFuture<F> =
         Map<
             F,
-            fn(Response) -> Result<Response, Infallible>,
+            fn(HttpResponse) -> Result<HttpResponse, Infallible>,
         >;
 }
 

@@ -3,7 +3,7 @@ use crate::{handler::Handler, prelude::*};
 use std::convert::Infallible;
 use tower::{Layer, ServiceExt, util::MapErrLayer};
 
-pub struct Route<E = Infallible>(LocalBoxCloneService<HttpRequest, Response, E>);
+pub struct Route<E = Infallible>(LocalBoxCloneService<HttpRequest, HttpResponse, E>);
 
 impl<E> Route<E> {
     pub fn new<T>(svc: T) -> Self

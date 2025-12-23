@@ -1,5 +1,5 @@
 use crate::{
-    HttpRequest, Response,
+    HttpRequest, HttpResponse,
     extract::{FromRequest, FromRequestParts},
     response::IntoResponse,
 };
@@ -7,7 +7,7 @@ use std::pin::Pin;
 
 // X for Extractor
 pub trait Handler<X, S>: Clone + Sized + 'static {
-    type Future: Future<Output = Response> + 'static;
+    type Future: Future<Output = HttpResponse> + 'static;
 
     fn call(self, req: HttpRequest, state: S) -> Self::Future;
 
@@ -36,7 +36,7 @@ where
     Fut: Future<Output = Res>,
     Res: IntoResponse,
 {
-    type Future = Pin<Box<dyn Future<Output = Response>>>;
+    type Future = Pin<Box<dyn Future<Output = HttpResponse>>>;
 
     fn call(self, _req: HttpRequest, _state: S) -> Self::Future {
         Box::pin(async move { self().await.into_response() })
@@ -57,7 +57,7 @@ macro_rules! impl_handler {
             $( $ty: FromRequestParts<S>, )*
             $last: FromRequest<S, M>,
         {
-            type Future = Pin<Box<dyn Future<Output = Response>>>;
+            type Future = Pin<Box<dyn Future<Output = HttpResponse>>>;
 
             fn call(self, req: HttpRequest, state: S) -> Self::Future {
                 let (mut parts, body) = req.into_parts();
@@ -116,7 +116,7 @@ where
     Res: IntoResponse,
     T1: FromRequest<S, M>,
 {
-    type Future = Pin<Box<dyn Future<Output = Response>>>;
+    type Future = Pin<Box<dyn Future<Output = HttpResponse>>>;
     fn call(self, req: HttpRequest, state: S) -> Self::Future {
         let (mut parts, body) = req.into_parts();
         Box::pin(async move {
@@ -139,7 +139,7 @@ where
     T1: FromRequestParts<S>,
     T2: FromRequest<S, M>,
 {
-    type Future = Pin<Box<dyn Future<Output = Response>>>;
+    type Future = Pin<Box<dyn Future<Output = HttpResponse>>>;
     fn call(self, req: HttpRequest, state: S) -> Self::Future {
         let (mut parts, body) = req.into_parts();
         Box::pin(async move {
@@ -167,7 +167,7 @@ where
     T2: FromRequestParts<S>,
     T3: FromRequest<S, M>,
 {
-    type Future = Pin<Box<dyn Future<Output = Response>>>;
+    type Future = Pin<Box<dyn Future<Output = HttpResponse>>>;
     fn call(self, req: HttpRequest, state: S) -> Self::Future {
         let (mut parts, body) = req.into_parts();
         Box::pin(async move {
