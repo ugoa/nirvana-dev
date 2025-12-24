@@ -121,16 +121,14 @@ fn main() {
     let body = async {
         let thread_id = std::thread::current().id();
         {
-            std::io::_print(std::format_args_nl!(
-                "Starting Monoio application on thread: {thread_id:?}",
-            ));
+            println!("Starting Monoio application on thread: {thread_id:?}",);
         };
         let addr: SocketAddr = ([0, 0, 0, 0], 9527).into();
         let listener = TcpListener::bind(addr).unwrap();
         let dummy_middleware = MapResponseLayer::new(|mut res: HttpResponse| -> HttpResponse {
             {
                 if !(!res.headers().contains_key("content-length")) {
-                    core::panicking::panic("explicit panic");
+                    panic!("explicit panic");
                 }
             };
             let mut rng = rand::rng();
@@ -165,9 +163,7 @@ fn main() {
                     .block_on(async {
                         let thread_id = std::thread::current().id();
                         {
-                            std::io::_print(std::format_args_nl!(
-                                "Starting Monoio application on thread: {thread_id:?}",
-                            ));
+                            println!("Starting Monoio application on thread: {thread_id:?}",);
                         };
                         let addr: SocketAddr = ([0, 0, 0, 0], 9527).into();
                         let listener = TcpListener::bind(addr).unwrap();
@@ -175,7 +171,7 @@ fn main() {
                             MapResponseLayer::new(|mut res: HttpResponse| -> HttpResponse {
                                 {
                                     if !(!res.headers().contains_key("content-length")) {
-                                        core::panicking::panic("explicit panic");
+                                        panic!("explicit panic");
                                     }
                                 };
                                 let mut rng = rand::rng();

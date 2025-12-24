@@ -1,5 +1,6 @@
 use crate::handler::Handler;
 use crate::prelude::*;
+use crate::routing::method_filter::MethodFilter;
 use crate::routing::route::{BoxedIntoRoute, ErasedIntoRoute, Route};
 use crate::routing::route_tower_impl::RouteFuture;
 use crate::routing::router::Fallback;
@@ -14,6 +15,16 @@ where
     S: Clone + 'static,
 {
     MethodRouter::new().get(handler)
+}
+
+pub fn get_service<T, S>(filter: MethodFilter, svc: T) -> MethodRouter<S, T::Error>
+where
+    T: TowerService<HttpRequest> + Clone + 'static,
+    T::Response: IntoResponse + 'static,
+    T::Future: 'static,
+    S: Clone,
+{
+    MethodRouter::new().get_service(svc)
 }
 
 pub struct MethodRouter<S = (), E = Infallible> {
@@ -66,6 +77,23 @@ where
             connect: MethodEndpoint::None,
             fallback: Fallback::Default(fallback),
         }
+    }
+
+    #[track_caller]
+    pub fn get_service<T>(mut self, svc: T) -> Self
+    where
+        T: TowerService<HttpRequest, Error = E> + Clone + 'static,
+        T::Response: IntoResponse + 'static,
+        T::Future: 'static,
+    {
+        let endpoint = &MethodEndpoint::Route(Route::new(svc));
+        let target = &mut self.get;
+
+        if target.is_some() {
+            panic!("Overlapping method route. Cannot add two method routes that both handle `GET`")
+        }
+        *target = endpoint.clone();
+        self
     }
 
     pub fn with_state<S2>(self, state: S) -> MethodRouter<S2, E> {
