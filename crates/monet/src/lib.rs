@@ -11,7 +11,6 @@ use http_body_util::BodyExt;
 use std::borrow::Cow;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-pub use tower::Service as TowerService;
 
 pub mod extract;
 pub mod handler;
@@ -23,13 +22,17 @@ pub mod serve;
 pub(crate) mod macros;
 pub(crate) mod prelude {
     pub use crate::{
-        Body, BoxError, HttpBody, HttpRequest, HttpResponse, IntoResponse, Route, TowerService,
+        Body, BoxError, HttpBody, HttpRequest, HttpResponse, IntoResponse, Route, TowerLayer,
+        TowerService,
     };
     pub use std::fmt;
 }
 
 pub type HttpRequest<T = Body> = http::Request<T>;
 pub type HttpResponse<T = Body> = http::Response<T>;
+pub use tower::Layer as TowerLayer;
+pub use tower::Service as TowerService;
+
 pub use tower::util::MapResponseLayer;
 
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;

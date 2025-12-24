@@ -1,7 +1,7 @@
 use super::route_tower_impl::{LocalBoxCloneService, MapIntoResponse, RouteFuture};
 use crate::{handler::Handler, prelude::*};
 use std::convert::Infallible;
-use tower::{Layer, ServiceExt, util::MapErrLayer};
+use tower::{ServiceExt, util::MapErrLayer};
 
 pub struct Route<E = Infallible>(LocalBoxCloneService<HttpRequest, HttpResponse, E>);
 
@@ -26,7 +26,7 @@ impl<E> Route<E> {
 
     pub fn layer<L, E2>(self, layer: L) -> Route<E2>
     where
-        L: Layer<Self> + 'static,
+        L: TowerLayer<Self> + 'static,
         L::Service: TowerService<HttpRequest> + Clone + 'static,
         <L::Service as TowerService<HttpRequest>>::Response: IntoResponse + 'static,
         <L::Service as TowerService<HttpRequest>>::Error: Into<E2> + 'static,
