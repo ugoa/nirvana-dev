@@ -258,9 +258,9 @@ impl<S, E> Clone for MethodRouter<S, E> {
 }
 
 enum MethodEndpoint<S, E> {
-    None,
-    Route(Route<E>),
     BoxedHandler(BoxedIntoRoute<S, E>),
+    Route(Route<E>),
+    None,
 }
 
 impl<S, E> fmt::Debug for MethodEndpoint<S, E> {
