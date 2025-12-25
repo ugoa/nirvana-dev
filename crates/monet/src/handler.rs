@@ -211,6 +211,19 @@ where
     }
 }
 
+impl<H, X, S> HandlerService<H, X, S> {
+    pub(super) fn new(handler: H, state: S) -> Self {
+        Self {
+            handler,
+            state,
+            _marker: PhantomData,
+        }
+    }
+    pub fn state(&self) -> &S {
+        &self.state
+    }
+}
+
 impl<H, T, S> fmt::Debug for HandlerService<H, T, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("IntoService").finish_non_exhaustive()

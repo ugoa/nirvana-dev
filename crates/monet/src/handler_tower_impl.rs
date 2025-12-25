@@ -52,16 +52,3 @@ opaque_future! {
             fn(HttpResponse) -> Result<HttpResponse, Infallible>,
         >;
 }
-
-impl<H, X, S> HandlerService<H, X, S> {
-    pub(super) fn new(handler: H, state: S) -> Self {
-        Self {
-            handler,
-            state,
-            _marker: PhantomData,
-        }
-    }
-    pub fn state(&self) -> &S {
-        &self.state
-    }
-}
