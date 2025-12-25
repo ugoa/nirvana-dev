@@ -33,8 +33,7 @@ pub use tower::Service as TowerService;
 
 #[monoio::main(threads = 1)]
 async fn main() {
-    let hs = HandlerService::new(hello);
-    let mut tower_service = MapIntoResponse::new(hs);
+    let mut tower_service = MapIntoResponse::new(HandlerService::new(hello));
 
     let thread_id = std::thread::current().id();
     println!("Starting Monoio application on thread: {thread_id:?}",);
@@ -185,14 +184,16 @@ pub trait Handler<X>: Clone + Sized {
 
 impl<F, Fut, Res> Handler<((),)> for F
 where
-    F: FnOnce() -> Fut + Clone + 'static,
+    F: FnOnce() -> Fut + Clone,
     Fut: Future<Output = Res>,
     Res: IntoResponse,
 {
     type Future = Pin<Box<dyn Future<Output = HttpResponse>>>;
 
     fn call(self, _req: HttpRequest) -> Self::Future {
-        Box::pin(async move { self().await.into_response() })
+        Box::pin(monoio::spawn_without_static(async {
+            self().await.into_response()
+        }))
     }
 }
 
